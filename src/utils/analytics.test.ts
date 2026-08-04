@@ -11,6 +11,19 @@ import {
   weightSummary,
 } from './analytics'
 
+// Build a local YYYY-MM-DD string (matching how DailyLog.log_date is stored),
+// offset by a number of days from today. Using local time — not UTC — keeps the
+// inputs in the same calendar frame the analytics functions compare against.
+function localDateString(offsetDays = 0): string {
+  const date = new Date()
+  date.setHours(12, 0, 0, 0)
+  date.setDate(date.getDate() - offsetDays)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 function makeWorkout(overrides: Partial<WorkoutSessionBundle>): WorkoutSessionBundle {
   return {
     id: 'session',
@@ -59,15 +72,15 @@ describe('weightSummary', () => {
 
 describe('currentStreak', () => {
   it('counts consecutive days ending today', () => {
-    const today = new Date().toISOString().slice(0, 10)
-    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-    const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10)
+    const today = localDateString(0)
+    const yesterday = localDateString(1)
+    const twoDaysAgo = localDateString(2)
     expect(currentStreak([today, yesterday, twoDaysAgo])).toBe(3)
   })
 
   it('does not reset the streak when today is not yet logged', () => {
-    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-    const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10)
+    const yesterday = localDateString(1)
+    const twoDaysAgo = localDateString(2)
     expect(currentStreak([yesterday, twoDaysAgo])).toBe(2)
   })
 
@@ -78,7 +91,7 @@ describe('currentStreak', () => {
 
 describe('dailyAdherence', () => {
   it('flags the most recent seven days', () => {
-    const today = new Date().toISOString().slice(0, 10)
+    const today = localDateString(0)
     const adherence = dailyAdherence([{ log_date: today } as DailyLog], 7)
     expect(adherence).toHaveLength(7)
     expect(adherence[adherence.length - 1]!.logged).toBe(true)

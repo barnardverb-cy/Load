@@ -64,9 +64,9 @@ export function weightSummary(
  * missed-but-not-yet-finished day does not instantly reset the count.
  */
 export function currentStreak(logDates: string[]): number {
-  const logged = new Set(logDates)
+  const logged = new Set(logDates.map(normalizeDateInput))
   const cursor = new Date()
-  cursor.setHours(0, 0, 0, 0)
+  cursor.setHours(12, 0, 0, 0)
   if (!logged.has(localDate(cursor))) {
     cursor.setDate(cursor.getDate() - 1)
     if (!logged.has(localDate(cursor))) return 0
@@ -84,10 +84,10 @@ export function currentStreak(logDates: string[]): number {
  * Per-day logging adherence for the last `days` days ending today.
  */
 export function dailyAdherence(logs: DailyLog[], days = 7): { date: string; logged: boolean }[] {
-  const logged = new Set(logs.map((log) => log.log_date))
+  const logged = new Set(logs.map((log) => normalizeDateInput(log.log_date)))
   const result: { date: string; logged: boolean }[] = []
   const cursor = new Date()
-  cursor.setHours(0, 0, 0, 0)
+  cursor.setHours(12, 0, 0, 0)
   for (let offset = days - 1; offset >= 0; offset -= 1) {
     const date = new Date(cursor)
     date.setDate(cursor.getDate() - offset)
@@ -102,6 +102,20 @@ function localDate(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+/**
+ * Normalize a date input (a `YYYY-MM-DD` database value or a full ISO string) to a
+ * local `YYYY-MM-DD` string. Parsing at local noon avoids the off-by-one day that
+ * occurs when UTC-derived strings are compared against locally computed dates.
+ */
+function normalizeDateInput(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value)
+  if (match) {
+    const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12, 0, 0)
+    return localDate(date)
+  }
+  return localDate(new Date(value))
 }
 
 /**
