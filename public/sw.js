@@ -8,7 +8,7 @@ const VERSION = 'load-v1'
 const SHELL_CACHE = `${VERSION}-shell`
 const ASSET_CACHE = `${VERSION}-assets`
 
-const SHELL_URLS = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg']
+const SHELL_URLS = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg', '/LoadLogo.png']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
