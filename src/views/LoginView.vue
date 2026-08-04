@@ -80,6 +80,12 @@ async function submit() {
       <button class="button button--primary" type="submit" :disabled="submitting">
         {{ submitting ? 'Signing in…' : 'Sign in' }}
       </button>
+
+      <div class="auth-links">
+        <RouterLink to="/forgot-password" class="auth-links__secondary"
+          >Forgot your password?</RouterLink
+        >
+      </div>
     </form>
 
     <p class="auth-switch">
