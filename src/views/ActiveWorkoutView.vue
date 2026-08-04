@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 
 import { useWorkoutStore } from '@/stores/workout'
+import { useOnlineStatus } from '@/composables/useOnlineStatus'
+import { useWorkoutDraft } from '@/composables/useWorkoutDraft'
 import type { WorkoutSessionSet } from '@/types/workout'
 import { getErrorMessage } from '@/utils/errors'
 import { formatDuration, workoutDurationSeconds } from '@/utils/workout'
@@ -12,6 +14,8 @@ type SetDraft = { reps: number | null; weight: number | null }
 const route = useRoute()
 const router = useRouter()
 const store = useWorkoutStore()
+const { online } = useOnlineStatus()
+const workoutDraft = useWorkoutDraft()
 const drafts = reactive<Record<string, SetDraft>>({})
 const now = ref(Date.now())
 const savingSetId = ref('')
@@ -43,6 +47,8 @@ const actionTimer = computed(() =>
   formatDuration(restRemaining.value || store.workout?.rest_between_exercises_seconds || 0),
 )
 
+const syncStatus = computed<'synced' | 'local'>(() => (online.value ? 'synced' : 'local'))
+
 function seedDrafts() {
   for (const set of store.sets) {
     drafts[set.id] = {
@@ -51,6 +57,8 @@ function seedDrafts() {
     }
   }
   notes.value = store.workout?.notes ?? ''
+  const saved = workoutDraft.restoreFor(sessionId.value)
+  if (saved) notes.value = saved.notes
 }
 
 async function load() {
@@ -126,6 +134,7 @@ async function completeSet(set: WorkoutSessionSet) {
     if (advanceAfterResolvedExercise()) {
       startRestTimer(store.workout?.rest_between_exercises_seconds ?? 0)
     }
+    workoutDraft.persist(sessionId.value, notes.value)
   } catch (error) {
     errorMessage.value = getErrorMessage(error, 'Unable to save this set.')
   } finally {
@@ -152,6 +161,7 @@ async function saveNotes() {
   if (notes.value === (store.workout?.notes ?? '')) return
   try {
     await store.saveNotes(notes.value)
+    workoutDraft.persist(sessionId.value, notes.value)
     notesSaved.value = true
   } catch (error) {
     errorMessage.value = getErrorMessage(error, 'Unable to save the workout notes.')
@@ -164,6 +174,7 @@ async function finish() {
   try {
     await saveNotes()
     await store.finish()
+    workoutDraft.discard()
     finishDialogOpen.value = false
     await router.replace(`/workouts/${sessionId.value}/summary`)
   } catch (error) {
@@ -178,6 +189,7 @@ async function cancel() {
   cancelling.value = true
   try {
     await store.cancel()
+    workoutDraft.discard()
     cancelDialogOpen.value = false
     await router.replace('/programs')
   } catch (error) {
@@ -197,6 +209,13 @@ onMounted(() => {
   }, 1000)
 })
 
+onBeforeRouteLeave(() => {
+  // Keep the local draft so a mid-workout navigation (or refresh) preserves input.
+  if (store.workout && store.workout.status === 'in_progress') {
+    workoutDraft.persist(sessionId.value, notes.value)
+  }
+})
+
 onBeforeUnmount(() => {
   if (ticker) globalThis.clearInterval(ticker)
   store.clear()
@@ -213,6 +232,14 @@ onBeforeUnmount(() => {
           <h1>{{ store.workout.program_name }}</h1>
           <p>{{ elapsed }} elapsed</p>
         </div>
+        <span
+          class="sync-pill"
+          :class="`sync-pill--${syncStatus}`"
+          :aria-label="syncStatus === 'synced' ? 'Synced to the server' : 'Saved locally'"
+        >
+          <span class="sync-pill__dot" aria-hidden="true"></span>
+          {{ syncStatus === 'synced' ? 'Synced' : 'Saved locally' }}
+        </span>
       </header>
 
       <div

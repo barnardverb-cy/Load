@@ -1,14 +1,19 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 
+import AdherenceChart from '@/components/AdherenceChart.vue'
+import StrengthImprovements from '@/components/StrengthImprovements.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
+import WeightTrendChart from '@/components/WeightTrendChart.vue'
 import { getDailyLog, getFitnessGoals, listDailyLogs, listWeeklyCheckIns } from '@/services/health'
-import { listWorkoutHistory } from '@/services/workouts'
+import { getActiveWorkout, listWorkoutHistory } from '@/services/workouts'
 import { useAuthStore } from '@/stores/auth'
 import type { DailyLog, FitnessGoals, WeeklyCheckIn } from '@/types/health'
-import type { WorkoutSessionBundle } from '@/types/workout'
-import { dateDaysAgo, localDateString } from '@/utils/date'
+import type { WorkoutSession, WorkoutSessionBundle } from '@/types/workout'
+import { localDateString } from '@/utils/date'
 import { getErrorMessage } from '@/utils/errors'
+import { dailyAdherence, strengthImprovements, weightSummary } from '@/utils/analytics'
 import { kilogramsToDisplay } from '@/utils/units'
 import { formatDuration, workoutDurationSeconds, workoutVolume } from '@/utils/workout'
 
@@ -19,6 +24,7 @@ const todayLog = ref<DailyLog | null>(null)
 const recentLogs = ref<DailyLog[]>([])
 const checkIns = ref<WeeklyCheckIn[]>([])
 const workouts = ref<WorkoutSessionBundle[]>([])
+const activeWorkout = ref<WorkoutSession | null>(null)
 const toast = reactive({ message: '', tone: 'error' as 'success' | 'error' })
 const today = localDateString()
 
@@ -44,32 +50,37 @@ const todayWorkouts = computed(() =>
       workout.status === 'completed' && localDateString(new Date(workout.started_at)) === today,
   ),
 )
+
 const weightPoints = computed(() =>
   [...checkIns.value]
     .reverse()
     .filter((checkIn) => checkIn.weight_kg !== null)
-    .slice(-8)
+    .slice(-12)
     .map((checkIn) => ({
       date: checkIn.check_in_date,
       value: kilogramsToDisplay(Number(checkIn.weight_kg), weightUnit.value),
     })),
 )
-const chartPoints = computed(() => {
-  const points = weightPoints.value
-  if (!points.length) return []
-  const values = points.map((point) => point.value)
-  const minimum = Math.min(...values)
-  const maximum = Math.max(...values)
-  const spread = maximum - minimum || 1
-  return points.map((point, index) => ({
-    ...point,
-    x: points.length === 1 ? 160 : 14 + (index / (points.length - 1)) * 292,
-    y: 14 + ((maximum - point.value) / spread) * 72,
-  }))
-})
-const chartPolyline = computed(() =>
-  chartPoints.value.map((point) => `${point.x},${point.y}`).join(' '),
+
+const weight = computed(() =>
+  weightSummary(
+    latestWeightCheckIn.value ? Number(latestWeightCheckIn.value.weight_kg) : null,
+    goals.value?.starting_weight_kg ?? null,
+    goals.value?.goal_weight_kg ?? null,
+  ),
 )
+
+const adherence = computed(() => dailyAdherence(recentLogs.value, 7))
+const strength = computed(() => strengthImprovements(workouts.value))
+const checkInDue = computed(() => {
+  if (!latestCheckIn.value) return true
+  const daysSince = Math.floor(
+    (new Date(`${today}T12:00:00`).getTime() -
+      new Date(`${latestCheckIn.value.check_in_date}T12:00:00`).getTime()) /
+      86400000,
+  )
+  return daysSince >= 7
+})
 
 const dailyGoals = computed(() => [
   {
@@ -103,10 +114,25 @@ function goalPercentage(value: number, goal: number | null) {
   return Math.min(100, Math.round((value / Number(goal)) * 100))
 }
 
+function dateDaysAgo(days: number, from = new Date()): string {
+  const date = new Date(from)
+  date.setDate(date.getDate() - days)
+  return localDateString(date)
+}
+
 function formatShortDate(value: string) {
   return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(
     new Date(`${value}T12:00:00`),
   )
+}
+
+// Load any in-progress workout so the dashboard can offer to resume it.
+async function loadActiveWorkout() {
+  try {
+    activeWorkout.value = await getActiveWorkout()
+  } catch {
+    activeWorkout.value = null
+  }
 }
 
 onMounted(async () => {
@@ -123,6 +149,7 @@ onMounted(async () => {
     recentLogs.value = logs
     checkIns.value = savedCheckIns
     workouts.value = history
+    await loadActiveWorkout()
   } catch (error) {
     toast.message = getErrorMessage(error, 'Unable to load the dashboard.')
   } finally {
@@ -149,6 +176,15 @@ onMounted(async () => {
 
     <div v-if="loading" class="empty-state">Loading your dashboard…</div>
     <template v-else>
+      <RouterLink v-if="activeWorkout" class="resume-banner" :to="`/workouts/${activeWorkout.id}`">
+        <span class="resume-banner__pulse" aria-hidden="true"></span>
+        <span>
+          <strong>Resume your workout</strong>
+          <small>{{ activeWorkout.program_name }} · in progress</small>
+        </span>
+        <span class="resume-banner__cta">Continue →</span>
+      </RouterLink>
+
       <section class="dashboard-section">
         <div class="section-heading section-heading--inline">
           <div>
@@ -191,37 +227,30 @@ onMounted(async () => {
             <RouterLink to="/check-ins">View check-ins</RouterLink>
           </div>
 
-          <template v-if="chartPoints.length">
+          <template v-if="latestWeightCheckIn">
             <div class="latest-measurement">
-              <strong>
-                {{ kilogramsToDisplay(Number(latestWeightCheckIn?.weight_kg), weightUnit) }}
-                <small>{{ weightUnit }}</small>
-              </strong>
+              <strong
+                >{{ kilogramsToDisplay(Number(latestWeightCheckIn.weight_kg), weightUnit)
+                }}<small>{{ weightUnit }}</small></strong
+              >
               <span class="latest-measurement__meta">
-                <small v-if="latestCheckIn?.body_fat_percentage != null">
-                  {{ Number(latestCheckIn?.body_fat_percentage) }}% body fat
-                </small>
-                <small v-if="goals?.goal_weight_kg != null">
-                  Goal: {{ kilogramsToDisplay(Number(goals.goal_weight_kg), weightUnit) }}
-                  {{ weightUnit }}
-                </small>
+                <small v-if="weight.changeFromStart !== null"
+                  >{{ weight.changeFromStart > 0 ? '+' : ''
+                  }}{{ kilogramsToDisplay(weight.changeFromStart, weightUnit) }}
+                  {{ weightUnit }} since starting</small
+                >
+                <small v-if="goals?.goal_weight_kg != null"
+                  >Goal: {{ kilogramsToDisplay(Number(goals.goal_weight_kg), weightUnit) }}
+                  {{ weightUnit }}</small
+                >
               </span>
             </div>
-            <svg class="weight-chart" viewBox="0 0 320 105" role="img" aria-label="Weight trend">
-              <path d="M14 86H306" />
-              <polyline :points="chartPolyline" />
-              <circle
-                v-for="point in chartPoints"
-                :key="point.date"
-                :cx="point.x"
-                :cy="point.y"
-                r="4"
-              />
-            </svg>
-            <div class="weight-chart__dates">
-              <span>{{ formatShortDate(chartPoints[0]!.date) }}</span>
-              <span>{{ formatShortDate(chartPoints[chartPoints.length - 1]!.date) }}</span>
-            </div>
+            <WeightTrendChart
+              :points="weightPoints"
+              :unit="weightUnit"
+              :goal="goals?.goal_weight_kg"
+              :starting="goals?.starting_weight_kg"
+            />
           </template>
           <div v-else class="empty-state empty-state--compact">
             Add a weekly weight check-in to start your trend.
@@ -244,16 +273,20 @@ onMounted(async () => {
               ><span>today</span>
             </div>
           </div>
-          <div class="week-dots" aria-label="Daily log consistency">
-            <span
-              v-for="offset in [6, 5, 4, 3, 2, 1, 0]"
-              :key="offset"
-              :class="{
-                'week-dots__filled': recentLogs.some((log) => log.log_date === dateDaysAgo(offset)),
-              }"
-              :title="dateDaysAgo(offset)"
-            ></span>
+          <AdherenceChart :days="adherence" />
+        </article>
+      </section>
+
+      <section class="dashboard-section">
+        <div class="section-heading section-heading--inline">
+          <div>
+            <p class="eyebrow">Training</p>
+            <h2>Recent strength gains</h2>
           </div>
+          <RouterLink to="/history">View history</RouterLink>
+        </div>
+        <article class="dashboard-panel">
+          <StrengthImprovements :improvements="strength" :unit="weightUnit" />
         </article>
       </section>
 
@@ -289,6 +322,15 @@ onMounted(async () => {
           Your recent workouts will appear here.
         </div>
       </section>
+
+      <RouterLink v-if="checkInDue" class="checkin-reminder" to="/check-ins">
+        <span class="checkin-reminder__icon" aria-hidden="true">◷</span>
+        <span>
+          <strong>Time for your weekly check-in</strong>
+          <small>Log weight and measurements to keep your trend accurate.</small>
+        </span>
+        <span class="checkin-reminder__cta">Check in →</span>
+      </RouterLink>
     </template>
   </div>
 </template>

@@ -59,7 +59,7 @@ npm run build
 
 ## Current milestone
 
-Milestone 5 provides:
+Milestones 6 through 8 are complete. The app now provides:
 
 - Registration, persistent sessions, protected routing, and profile preferences
 - A private exercise library with search, editing, archiving, and restoring
@@ -75,4 +75,14 @@ Milestone 5 provides:
 - Private fitness goals for weight, body fat, calories, protein, water, and steps
 - One editable daily nutrition, hydration, activity, sleep, and notes log per date
 - Weekly weight, body-fat, and body-measurement check-ins
-- A dashboard with daily goal progress, a weight trend, seven-day consistency, and recent workouts
+- A dashboard with:
+  - Today's calorie, protein, water, and step goal progress
+  - A weight-trend chart with starting-weight and goal reference lines, plus the change since
+    starting
+  - Seven-day consistency (logged days, workouts, and today) and a daily-adherence strip
+  - Recent strength gains derived from estimated one-rep-max across sessions
+  - Recent workouts and a banner to resume an in-progress session
+  - A weekly check-in reminder when seven days have passed since the last entry
+- Installable PWA with an app-shell service worker for offline browsing, a global offline banner,
+  and a per-workout "Synced" / "Saved locally" indicator with local draft persistence so a refresh
+  mid-session never loses your entries

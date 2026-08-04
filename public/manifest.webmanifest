@@ -1,0 +1,19 @@
+{
+  "name": "Load — Personal Fitness Tracker",
+  "short_name": "Load",
+  "description": "Prescribe your next workout automatically with progressive-overload tracking, nutrition logging, and body progress charts.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f3ed",
+  "theme_color": "#173e2c",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
