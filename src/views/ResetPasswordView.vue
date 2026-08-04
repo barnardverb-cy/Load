@@ -5,7 +5,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import AuthLayout from '@/layouts/AuthLayout.vue'
 import { useAuthStore } from '@/stores/auth'
 import { supabase } from '@/lib/supabase'
-import { delay } from '@/utils/url'
+import { currentUrl, delay } from '@/utils/url'
 import { passwordResetSchema } from '@/validation/auth'
 
 const auth = useAuthStore()
@@ -18,12 +18,26 @@ const successMessage = ref('')
 const submitting = ref(false)
 const sessionReady = ref(false)
 const checking = ref(true)
+const showPassword = ref(false)
+
+async function detectSession() {
+  const { data } = await supabase.auth.getSession()
+  return Boolean(data.session)
+}
 
 onMounted(async () => {
-  // Supabase exchanges the reset token in the URL automatically
-  // (detectSessionInUrl is enabled in the client); wait for it to settle.
-  const { data } = await supabase.auth.getSession()
-  sessionReady.value = Boolean(data.session)
+  // Supabase exchanges the recovery token in the URL automatically
+  // (detectSessionInUrl is enabled). The exchange is async, so if a token is
+  // present but not yet processed, poll briefly instead of failing immediately.
+  const hasToken = /[?&#](access_token|type=recovery|token)/.test(currentUrl())
+
+  sessionReady.value = await detectSession()
+  if (!sessionReady.value && hasToken) {
+    for (let attempt = 0; attempt < 10 && !sessionReady.value; attempt += 1) {
+      await delay(300)
+      sessionReady.value = await detectSession()
+    }
+  }
   checking.value = false
 })
 
@@ -70,28 +84,43 @@ async function submit() {
     <form v-else-if="sessionReady" class="form" novalidate @submit.prevent="submit">
       <div class="field">
         <label for="new-password">New password</label>
-        <input
-          id="new-password"
-          v-model="form.password"
-          type="password"
-          autocomplete="new-password"
-          placeholder="8+ characters"
-          :aria-invalid="Boolean(errors.password)"
-        />
+        <div class="field__row">
+          <input
+            id="new-password"
+            v-model="form.password"
+            :type="showPassword ? 'text' : 'password'"
+            autocomplete="new-password"
+            placeholder="8+ characters"
+            :aria-invalid="Boolean(errors.password)"
+          />
+          <button
+            type="button"
+            class="password-toggle"
+            :aria-label="showPassword ? 'Hide password' : 'Show password'"
+            :aria-pressed="showPassword"
+            @click="showPassword = !showPassword"
+          >
+            {{ showPassword ? 'Hide' : 'Show' }}
+          </button>
+        </div>
         <p v-if="errors.password" class="field-error">{{ errors.password }}</p>
       </div>
 
       <div class="field">
         <label for="confirm-new-password">Confirm password</label>
-        <input
-          id="confirm-new-password"
-          v-model="form.confirmPassword"
-          type="password"
-          autocomplete="new-password"
-          placeholder="Repeat password"
-          :aria-invalid="Boolean(errors.confirmPassword)"
-        />
-        <p v-if="errors.confirmPassword" class="field-error">{{ errors.confirmPassword }}</p>
+        <div class="field__row">
+          <input
+            id="confirm-new-password"
+            v-model="form.confirmPassword"
+            :type="showPassword ? 'text' : 'password'"
+            autocomplete="new-password"
+            placeholder="Repeat password"
+            :aria-invalid="Boolean(errors.confirmPassword)"
+          />
+        </div>
+        <p v-if="errors.confirmPassword" class="field-error">
+          {{ errors.confirmPassword }}
+        </p>
       </div>
 
       <p v-if="submitError" class="alert alert--error" role="alert">{{ submitError }}</p>

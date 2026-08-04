@@ -217,6 +217,33 @@ h2 {
   border-color: var(--danger);
 }
 
+.field__row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.field__row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.password-toggle {
+  flex: 0 0 auto;
+  padding: 0 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: #ebece5;
+  color: #343d38;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.password-toggle:hover {
+  background: #e2e3da;
+}
+
 .field-error {
   margin: 0;
   color: var(--danger);

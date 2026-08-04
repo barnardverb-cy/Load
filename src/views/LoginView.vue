@@ -14,6 +14,7 @@ const form = reactive({ email: '', password: '' })
 const errors = ref<Record<string, string>>({})
 const submitError = ref('')
 const submitting = ref(false)
+const showPassword = ref(false)
 
 async function submit() {
   errors.value = {}
@@ -64,14 +65,25 @@ async function submit() {
 
       <div class="field">
         <label for="password">Password</label>
-        <input
-          id="password"
-          v-model="form.password"
-          type="password"
-          autocomplete="current-password"
-          placeholder="Your password"
-          :aria-invalid="Boolean(errors.password)"
-        />
+        <div class="field__row">
+          <input
+            id="password"
+            v-model="form.password"
+            :type="showPassword ? 'text' : 'password'"
+            autocomplete="current-password"
+            placeholder="Your password"
+            :aria-invalid="Boolean(errors.password)"
+          />
+          <button
+            type="button"
+            class="password-toggle"
+            :aria-label="showPassword ? 'Hide password' : 'Show password'"
+            :aria-pressed="showPassword"
+            @click="showPassword = !showPassword"
+          >
+            {{ showPassword ? 'Hide' : 'Show' }}
+          </button>
+        </div>
         <p v-if="errors.password" class="field-error">{{ errors.password }}</p>
       </div>
 
