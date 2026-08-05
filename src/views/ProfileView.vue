@@ -157,14 +157,29 @@ onMounted(async () => {
         <fieldset class="field">
           <legend>Preferred weight unit</legend>
           <div class="segmented-control" role="radiogroup" aria-label="Preferred weight unit">
-            <label class="segmented-control__option">
-              <input v-model="form.preferredWeightUnit" type="radio" value="kg" />
-              <span>Kilograms</span>
-            </label>
-            <label class="segmented-control__option">
-              <input v-model="form.preferredWeightUnit" type="radio" value="lb" />
-              <span>Pounds</span>
-            </label>
+            <span
+              class="segmented-control__thumb"
+              :class="{ 'is-lb': form.preferredWeightUnit === 'lb' }"
+              aria-hidden="true"
+            ></span>
+            <button
+              type="button"
+              class="segmented-control__option"
+              role="radio"
+              :aria-checked="form.preferredWeightUnit === 'kg'"
+              @click="form.preferredWeightUnit = 'kg'"
+            >
+              Kilograms
+            </button>
+            <button
+              type="button"
+              class="segmented-control__option"
+              role="radio"
+              :aria-checked="form.preferredWeightUnit === 'lb'"
+              @click="form.preferredWeightUnit = 'lb'"
+            >
+              Pounds
+            </button>
           </div>
         </fieldset>
 
