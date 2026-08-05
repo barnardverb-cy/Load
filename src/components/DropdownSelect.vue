@@ -26,39 +26,39 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
+const root = ref<HTMLElement | null>(null)
 const open = ref(false)
 const selectedLabel = computed(
   () =>
     props.options.find((option) => option.value === props.modelValue)?.label ?? props.placeholder,
 )
 
-function close() {
-  open.value = false
-}
-
 function toggle() {
-  if (!open.value) globalThis.dispatchEvent(new globalThis.Event('load-dropdown-open'))
   open.value = !open.value
 }
 
 function select(value: string) {
   emit('update:modelValue', value)
-  close()
+  open.value = false
+}
+
+function onDocumentClick(event: MouseEvent) {
+  if (root.value && !root.value.contains(event.target as Node)) {
+    open.value = false
+  }
 }
 
 onMounted(() => {
-  globalThis.addEventListener('click', close)
-  globalThis.addEventListener('load-dropdown-open', close)
+  globalThis.document.addEventListener('click', onDocumentClick, true)
 })
 
 onBeforeUnmount(() => {
-  globalThis.removeEventListener('click', close)
-  globalThis.removeEventListener('load-dropdown-open', close)
+  globalThis.document.removeEventListener('click', onDocumentClick, true)
 })
 </script>
 
 <template>
-  <div :class="['dropdown-select', { 'dropdown-select--field': !iconOnly }]" @click.stop>
+  <div ref="root" :class="['dropdown-select', { 'dropdown-select--field': !iconOnly }]">
     <button
       :id="inputId"
       :class="[

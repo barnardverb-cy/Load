@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 
 import ToastNotification from '@/components/ToastNotification.vue'
 import { getFitnessGoals, saveFitnessGoals } from '@/services/health'
 import { useAuthStore } from '@/stores/auth'
+import { useRefresh } from '@/composables/useRefresh'
 import type { FitnessGoals } from '@/types/health'
 import { getErrorMessage } from '@/utils/errors'
 import { displayWeightToKilograms, kilogramsToDisplay } from '@/utils/units'
@@ -12,6 +13,7 @@ import { fitnessGoalsSchema } from '@/validation/health'
 type NumberField = number | ''
 
 const auth = useAuthStore()
+const { setLoader } = useRefresh()
 const saving = ref(false)
 const savingGoals = ref(false)
 const toast = reactive({ message: '', tone: 'success' as 'success' | 'error' })
@@ -126,12 +128,19 @@ async function saveGoals() {
 }
 
 onMounted(async () => {
+  setLoader(load)
   try {
     populateGoals(await getFitnessGoals())
   } catch (error) {
     showToast(getErrorMessage(error, 'Unable to load fitness goals.'), 'error')
   }
 })
+
+onBeforeUnmount(() => setLoader(null))
+
+async function load() {
+  populateGoals(await getFitnessGoals())
+}
 </script>
 
 <template>
