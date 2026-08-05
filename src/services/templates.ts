@@ -80,6 +80,16 @@ export async function setTemplateArchived(id: string, isArchived: boolean): Prom
   if (error) throw error
 }
 
+export async function deleteTemplate(id: string): Promise<void> {
+  const { error: exerciseError } = await supabase
+    .from('template_exercises')
+    .delete()
+    .eq('template_id', id)
+  if (exerciseError) throw exerciseError
+  const { error } = await supabase.from('workout_templates').delete().eq('id', id)
+  if (error) throw error
+}
+
 export async function getTemplate(id: string): Promise<{
   template: WorkoutTemplate
   exercises: TemplateExerciseWithExercise[]

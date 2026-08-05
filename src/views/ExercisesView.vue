@@ -4,6 +4,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import DropdownSelect from '@/components/DropdownSelect.vue'
 import {
   createExercise,
+  deleteExercise,
   listExercises,
   setExerciseArchived,
   updateExercise,
@@ -29,6 +30,7 @@ const searchInput = ref<{ blur: () => void } | null>(null)
 const editing = ref<Exercise | null>(null)
 const draggingExerciseId = ref<string | null>(null)
 const swipeOffset = ref(0)
+const confirmingDeleteId = ref<string | null>(null)
 const editorOpen = ref(false)
 const errorMessage = ref('')
 const formErrors = ref<Record<string, string>>({})
@@ -184,26 +186,40 @@ function startSwipe(id: string, event: SwipePointerEvent) {
   swipeStartX = event.clientX
   swipeOffset.value = 0
   suppressCardClick = false
+  confirmingDeleteId.value = null
 }
 
 function moveSwipe(event: SwipePointerEvent) {
   if (!draggingExerciseId.value) return
   const delta = event.clientX - swipeStartX
   if (Math.abs(delta) > 6) suppressCardClick = true
-  swipeOffset.value = Math.min(0, Math.max(-MAX_SWIPE_DISTANCE, delta))
+  swipeOffset.value = Math.min(MAX_SWIPE_DISTANCE, Math.max(-MAX_SWIPE_DISTANCE, delta))
 }
 
 function finishSwipe(exercise: Exercise) {
   if (!draggingExerciseId.value) return
-  const shouldToggle = swipeOffset.value <= -SWIPE_TRIGGER_DISTANCE
+  const shouldArchive = swipeOffset.value >= SWIPE_TRIGGER_DISTANCE
+  const shouldDelete = swipeOffset.value <= -SWIPE_TRIGGER_DISTANCE
   draggingExerciseId.value = null
   swipeOffset.value = 0
-  if (shouldToggle) void toggleArchived(exercise)
+  if (shouldArchive) void toggleArchived(exercise)
+  else if (shouldDelete) confirmingDeleteId.value = exercise.id
 }
 
 function cancelSwipe() {
   draggingExerciseId.value = null
   swipeOffset.value = 0
+}
+
+async function deleteExerciseItem(exercise: Exercise) {
+  errorMessage.value = ''
+  try {
+    await deleteExercise(exercise.id)
+    confirmingDeleteId.value = null
+    await load()
+  } catch (error) {
+    errorMessage.value = getErrorMessage(error, 'Unable to delete the exercise.')
+  }
 }
 
 function openExerciseCard(exercise: Exercise) {
@@ -332,9 +348,15 @@ onMounted(load)
         :key="exercise.id"
         :class="['swipe-card', { 'swipe-card--dragging': draggingExerciseId === exercise.id }]"
       >
+        <div class="swipe-card__indicator swipe-card__indicator--delete" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13" />
+          </svg>
+          <span>Delete</span>
+        </div>
         <div
           :class="[
-            'swipe-card__indicator',
+            'swipe-card__indicator swipe-card__indicator--archive',
             { 'swipe-card__indicator--restore': exercise.is_archived },
           ]"
           aria-hidden="true"
@@ -360,7 +382,7 @@ onMounted(load)
           :aria-label="
             'Edit ' +
             exercise.name +
-            '. Swipe left to ' +
+            '. Swipe left to delete, or swipe right to ' +
             (exercise.is_archived ? 'restore.' : 'archive.')
           "
           @click="openExerciseCard(exercise)"
@@ -384,6 +406,31 @@ onMounted(load)
             <p v-if="exercise.notes" class="item-card__notes">{{ exercise.notes }}</p>
           </div>
         </article>
+
+        <div
+          v-if="confirmingDeleteId === exercise.id"
+          class="swipe-confirm"
+          role="alertdialog"
+          aria-label="Confirm delete"
+        >
+          <span>Delete {{ exercise.name }}?</span>
+          <div class="swipe-confirm__actions">
+            <button
+              class="button button--secondary button--compact"
+              type="button"
+              @click="confirmingDeleteId = null"
+            >
+              Cancel
+            </button>
+            <button
+              class="button button--danger button--compact"
+              type="button"
+              @click="deleteExerciseItem(exercise)"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
       </div>
     </section>
 

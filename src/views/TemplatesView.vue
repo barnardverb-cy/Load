@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import DropdownSelect from '@/components/DropdownSelect.vue'
 import {
   createTemplate,
+  deleteTemplate,
   duplicateTemplate,
   listTemplates,
   setTemplateArchived,
@@ -45,6 +46,7 @@ const secondWheel = ref<TimeWheelElement | null>(null)
 const timeOptions = Array.from({ length: 60 }, (_, value) => value)
 const draggingProgramId = ref<string | null>(null)
 const programSwipeOffset = ref(0)
+const confirmingDeleteId = ref<string | null>(null)
 const programFilterOptions = [
   { value: 'all', label: 'All programs' },
   { value: 'archived', label: 'Archive' },
@@ -195,26 +197,40 @@ function startProgramSwipe(id: string, event: SwipePointerEvent) {
   programSwipeStartX = event.clientX
   programSwipeOffset.value = 0
   suppressProgramClick = false
+  confirmingDeleteId.value = null
 }
 
 function moveProgramSwipe(event: SwipePointerEvent) {
   if (!draggingProgramId.value) return
   const delta = event.clientX - programSwipeStartX
   if (Math.abs(delta) > 6) suppressProgramClick = true
-  programSwipeOffset.value = Math.min(0, Math.max(-MAX_SWIPE_DISTANCE, delta))
+  programSwipeOffset.value = Math.min(MAX_SWIPE_DISTANCE, Math.max(-MAX_SWIPE_DISTANCE, delta))
 }
 
 function finishProgramSwipe(template: TemplateSummary) {
   if (!draggingProgramId.value) return
-  const shouldToggle = programSwipeOffset.value <= -SWIPE_TRIGGER_DISTANCE
+  const shouldArchive = programSwipeOffset.value >= SWIPE_TRIGGER_DISTANCE
+  const shouldDelete = programSwipeOffset.value <= -SWIPE_TRIGGER_DISTANCE
   draggingProgramId.value = null
   programSwipeOffset.value = 0
-  if (shouldToggle) void toggleArchived(template)
+  if (shouldArchive) void toggleArchived(template)
+  else if (shouldDelete) confirmingDeleteId.value = template.id
 }
 
 function cancelProgramSwipe() {
   draggingProgramId.value = null
   programSwipeOffset.value = 0
+}
+
+async function deleteTemplateItem(template: TemplateSummary) {
+  errorMessage.value = ''
+  try {
+    await deleteTemplate(template.id)
+    confirmingDeleteId.value = null
+    await load()
+  } catch (error) {
+    errorMessage.value = getErrorMessage(error, 'Unable to delete the program.')
+  }
 }
 
 function openProgramCard(template: TemplateSummary) {
@@ -355,9 +371,15 @@ onMounted(load)
         :key="template.id"
         :class="['swipe-card', { 'swipe-card--dragging': draggingProgramId === template.id }]"
       >
+        <div class="swipe-card__indicator swipe-card__indicator--delete" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13" />
+          </svg>
+          <span>Delete</span>
+        </div>
         <div
           :class="[
-            'swipe-card__indicator',
+            'swipe-card__indicator swipe-card__indicator--archive',
             { 'swipe-card__indicator--restore': template.is_archived },
           ]"
           aria-hidden="true"
@@ -383,7 +405,7 @@ onMounted(load)
           :aria-label="
             'Edit ' +
             template.name +
-            '. Swipe left to ' +
+            '. Swipe left to delete, or swipe right to ' +
             (template.is_archived ? 'restore.' : 'archive.')
           "
           @click="openProgramCard(template)"
@@ -428,6 +450,31 @@ onMounted(load)
             </button>
           </div>
         </article>
+
+        <div
+          v-if="confirmingDeleteId === template.id"
+          class="swipe-confirm"
+          role="alertdialog"
+          aria-label="Confirm delete"
+        >
+          <span>Delete {{ template.name }}?</span>
+          <div class="swipe-confirm__actions">
+            <button
+              class="button button--secondary button--compact"
+              type="button"
+              @click="confirmingDeleteId = null"
+            >
+              Cancel
+            </button>
+            <button
+              class="button button--danger button--compact"
+              type="button"
+              @click="deleteTemplateItem(template)"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
       </div>
     </section>
 

@@ -52,3 +52,8 @@ export async function setExerciseArchived(id: string, isArchived: boolean): Prom
     .eq('id', id)
   if (error) throw error
 }
+
+export async function deleteExercise(id: string): Promise<void> {
+  const { error } = await supabase.from('exercises').delete().eq('id', id)
+  if (error) throw error
+}

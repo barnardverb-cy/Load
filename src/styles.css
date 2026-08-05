@@ -1148,10 +1148,38 @@ h2 {
   background: transparent;
   font-size: 0.72rem;
   font-weight: 800;
+  pointer-events: none;
 }
 
-.swipe-card__indicator--restore {
+.swipe-card__indicator--archive {
   color: var(--forest);
+}
+
+.swipe-card__indicator--delete {
+  right: auto;
+  left: 0;
+  color: var(--danger);
+}
+
+.swipe-confirm {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--danger);
+  border-radius: 0.8rem;
+  background: color-mix(in srgb, var(--danger) 8%, var(--paper));
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.swipe-confirm__actions {
+  display: flex;
+  gap: 0.5rem;
 }
 
 .swipe-card__indicator svg {
