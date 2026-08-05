@@ -4,9 +4,8 @@ import { useRouter } from 'vue-router'
 
 import BrandMark from '@/components/BrandMark.vue'
 import { useAuthStore } from '@/stores/auth'
-import { provideRefresh, useRefresh } from '@/composables/useRefresh'
+import { useRefresh } from '@/composables/useRefresh'
 
-provideRefresh()
 const { refreshing, refresh } = useRefresh()
 
 const auth = useAuthStore()

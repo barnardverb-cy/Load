@@ -21,7 +21,7 @@ import { workoutTemplateSchema } from '@/validation/training'
 
 const auth = useAuthStore()
 const router = useRouter()
-const { refreshing, setLoader, clearLoader } = useRefresh()
+const { refreshing, setLoader } = useRefresh()
 const templates = ref<TemplateSummary[]>([])
 const loading = ref(true)
 const saving = ref(false)
@@ -278,7 +278,7 @@ onMounted(() => {
   void load()
 })
 
-onBeforeUnmount(() => clearLoader())
+onBeforeUnmount(() => setLoader(null))
 </script>
 
 <template>

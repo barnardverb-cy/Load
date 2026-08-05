@@ -8,7 +8,7 @@ import type { WorkoutSessionBundle } from '@/types/workout'
 import { getErrorMessage } from '@/utils/errors'
 import { formatDuration, workoutDurationSeconds, workoutVolume } from '@/utils/workout'
 
-const { refreshing, setLoader, clearLoader } = useRefresh()
+const { refreshing, setLoader } = useRefresh()
 const workouts = ref<WorkoutSessionBundle[]>([])
 const loading = ref(true)
 const errorMessage = ref('')
@@ -44,7 +44,7 @@ onMounted(() => {
   void load()
 })
 
-onBeforeUnmount(() => clearLoader())
+onBeforeUnmount(() => setLoader(null))
 </script>
 
 <template>

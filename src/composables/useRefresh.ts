@@ -1,51 +1,42 @@
-import { inject, provide, ref, type InjectionKey, type Ref } from 'vue'
+import { ref, type Ref } from 'vue'
 
-type Loader = () => Promise<void> | void
+export type RefreshLoader = () => Promise<void> | void
 
-interface RefreshContext {
+export interface RefreshController {
   refreshing: Ref<boolean>
-  setLoader: (fn: Loader) => void
-  clearLoader: () => void
+  setLoader: (loader: RefreshLoader | null) => void
   refresh: () => Promise<void>
 }
 
-const RefreshKey: InjectionKey<RefreshContext> = Symbol('view-refresh')
-
 /**
- * Called once in the app shell (AppLayout). Exposes a refresh control that the
- * currently mounted view can register its data loader against, so a single
- * "refresh" button can reload whatever list is on screen (useful for installed
- * PWA users who have no browser refresh gesture).
+ * Module-level singleton coordinating the manual "Refresh" button (shown in the
+ * app shell) with the currently mounted list view.
+ *
+ * The active view registers its data loader via `setLoader` on mount and clears
+ * it on unmount; the app shell calls `refresh()` to re-run that loader. A
+ * singleton (rather than provide/inject) is used deliberately: the app shell and
+ * the route views are lazily loaded as separate chunks, and a provide/inject
+ * boundary across that async component tree was not reliably enclosing the
+ * views (producing "useRefresh must be used within a provideRefresh() boundary").
  */
-export function provideRefresh() {
-  const loader = ref<Loader | null>(null)
-  const refreshing = ref(false)
 
-  const context: RefreshContext = {
+const refreshing = ref(false)
+let activeLoader: RefreshLoader | null = null
+
+export function useRefresh(): RefreshController {
+  return {
     refreshing,
-    setLoader(fn: Loader) {
-      loader.value = fn
-    },
-    clearLoader() {
-      loader.value = null
+    setLoader(loader: RefreshLoader | null) {
+      activeLoader = loader
     },
     async refresh() {
-      if (!loader.value || refreshing.value) return
+      if (!activeLoader || refreshing.value) return
       refreshing.value = true
       try {
-        await loader.value()
+        await activeLoader()
       } finally {
         refreshing.value = false
       }
     },
   }
-
-  provide(RefreshKey, context)
-  return context
-}
-
-export function useRefresh(): RefreshContext {
-  const ctx = inject(RefreshKey)
-  if (!ctx) throw new Error('useRefresh must be used within a provideRefresh() boundary')
-  return ctx
 }

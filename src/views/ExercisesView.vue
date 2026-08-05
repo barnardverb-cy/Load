@@ -22,7 +22,7 @@ import {
 } from '@/validation/training'
 
 const auth = useAuthStore()
-const { refreshing, setLoader, clearLoader } = useRefresh()
+const { refreshing, setLoader } = useRefresh()
 const exercises = ref<Exercise[]>([])
 const loading = ref(true)
 const saving = ref(false)
@@ -266,7 +266,7 @@ onMounted(() => {
   void load()
 })
 
-onBeforeUnmount(() => clearLoader())
+onBeforeUnmount(() => setLoader(null))
 </script>
 
 <template>

@@ -20,7 +20,7 @@ import { kilogramsToDisplay } from '@/utils/units'
 import { formatDuration, workoutDurationSeconds, workoutVolume } from '@/utils/workout'
 
 const auth = useAuthStore()
-const { refreshing, setLoader, clearLoader } = useRefresh()
+const { refreshing, setLoader } = useRefresh()
 const loading = ref(true)
 const goals = ref<FitnessGoals | null>(null)
 const todayLog = ref<DailyLog | null>(null)
@@ -165,7 +165,7 @@ onMounted(() => {
   void load()
 })
 
-onBeforeUnmount(() => clearLoader())
+onBeforeUnmount(() => setLoader(null))
 </script>
 
 <template>
