@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watchEffect } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 
 import ToastNotification from '@/components/ToastNotification.vue'
 import { getFitnessGoals, saveFitnessGoals } from '@/services/health'
@@ -37,12 +37,16 @@ const goalsDirty = computed(
   () => savedGoalsSnapshot.value !== '' && JSON.stringify(goalsForm) !== savedGoalsSnapshot.value,
 )
 
-watchEffect(() => {
-  if (!auth.profile) return
-  form.displayName = auth.profile.display_name ?? ''
-  form.preferredWeightUnit = auth.profile.preferred_weight_unit
-  savedProfileSnapshot.value = JSON.stringify(form)
-})
+watch(
+  () => auth.profile,
+  (profile) => {
+    if (!profile) return
+    form.displayName = profile.display_name ?? ''
+    form.preferredWeightUnit = profile.preferred_weight_unit
+    savedProfileSnapshot.value = JSON.stringify(form)
+  },
+  { immediate: true },
+)
 
 function showToast(message: string, tone: 'success' | 'error' = 'success') {
   toast.message = message
