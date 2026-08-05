@@ -209,12 +209,12 @@ function moveProgramSwipe(event: SwipePointerEvent) {
 
 function finishProgramSwipe(template: TemplateSummary) {
   if (!draggingProgramId.value) return
-  const shouldArchive = programSwipeOffset.value >= SWIPE_TRIGGER_DISTANCE
-  const shouldDelete = programSwipeOffset.value <= -SWIPE_TRIGGER_DISTANCE
+  const shouldDelete = programSwipeOffset.value >= SWIPE_TRIGGER_DISTANCE
+  const shouldArchive = programSwipeOffset.value <= -SWIPE_TRIGGER_DISTANCE
   draggingProgramId.value = null
   programSwipeOffset.value = 0
-  if (shouldArchive) void toggleArchived(template)
-  else if (shouldDelete) confirmingDeleteId.value = template.id
+  if (shouldDelete) confirmingDeleteId.value = template.id
+  else if (shouldArchive) void toggleArchived(template)
 }
 
 function cancelProgramSwipe() {
@@ -231,6 +231,14 @@ async function deleteTemplateItem(template: TemplateSummary) {
   } catch (error) {
     errorMessage.value = getErrorMessage(error, 'Unable to delete the program.')
   }
+}
+
+const templateToDelete = computed(
+  () => templates.value.find((item) => item.id === confirmingDeleteId.value) ?? null,
+)
+
+function confirmDeleteTemplate() {
+  if (templateToDelete.value) void deleteTemplateItem(templateToDelete.value)
 }
 
 function openProgramCard(template: TemplateSummary) {
@@ -450,31 +458,6 @@ onMounted(load)
             </button>
           </div>
         </article>
-
-        <div
-          v-if="confirmingDeleteId === template.id"
-          class="swipe-confirm"
-          role="alertdialog"
-          aria-label="Confirm delete"
-        >
-          <span>Delete {{ template.name }}?</span>
-          <div class="swipe-confirm__actions">
-            <button
-              class="button button--secondary button--compact"
-              type="button"
-              @click="confirmingDeleteId = null"
-            >
-              Cancel
-            </button>
-            <button
-              class="button button--danger button--compact"
-              type="button"
-              @click="deleteTemplateItem(template)"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -621,6 +604,39 @@ onMounted(load)
             @click="confirmStart"
           >
             {{ startingId ? 'Starting…' : 'Start workout' }}
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div
+      v-if="templateToDelete"
+      class="modal-backdrop confirmation-backdrop"
+      @click.self="confirmingDeleteId = null"
+    >
+      <section
+        class="modal confirmation-dialog"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="delete-template-title"
+        aria-describedby="delete-template-description"
+      >
+        <div class="confirmation-dialog__icon confirmation-dialog__icon--danger" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13" />
+          </svg>
+        </div>
+        <h2 id="delete-template-title">Are you sure you want to delete this program?</h2>
+        <p id="delete-template-description">
+          <strong>{{ templateToDelete.name }}</strong> and all its exercises will be permanently
+          removed. This cannot be undone.
+        </p>
+        <div class="modal__actions confirmation-dialog__actions">
+          <button class="button button--secondary" type="button" @click="confirmingDeleteId = null">
+            Cancel
+          </button>
+          <button class="button button--danger" type="button" @click="confirmDeleteTemplate">
+            Yes, delete
           </button>
         </div>
       </section>

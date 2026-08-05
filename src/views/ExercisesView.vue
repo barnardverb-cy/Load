@@ -198,12 +198,12 @@ function moveSwipe(event: SwipePointerEvent) {
 
 function finishSwipe(exercise: Exercise) {
   if (!draggingExerciseId.value) return
-  const shouldArchive = swipeOffset.value >= SWIPE_TRIGGER_DISTANCE
-  const shouldDelete = swipeOffset.value <= -SWIPE_TRIGGER_DISTANCE
+  const shouldDelete = swipeOffset.value >= SWIPE_TRIGGER_DISTANCE
+  const shouldArchive = swipeOffset.value <= -SWIPE_TRIGGER_DISTANCE
   draggingExerciseId.value = null
   swipeOffset.value = 0
-  if (shouldArchive) void toggleArchived(exercise)
-  else if (shouldDelete) confirmingDeleteId.value = exercise.id
+  if (shouldDelete) confirmingDeleteId.value = exercise.id
+  else if (shouldArchive) void toggleArchived(exercise)
 }
 
 function cancelSwipe() {
@@ -220,6 +220,14 @@ async function deleteExerciseItem(exercise: Exercise) {
   } catch (error) {
     errorMessage.value = getErrorMessage(error, 'Unable to delete the exercise.')
   }
+}
+
+const exerciseToDelete = computed(
+  () => exercises.value.find((item) => item.id === confirmingDeleteId.value) ?? null,
+)
+
+function confirmDeleteExercise() {
+  if (exerciseToDelete.value) void deleteExerciseItem(exerciseToDelete.value)
 }
 
 function openExerciseCard(exercise: Exercise) {
@@ -406,31 +414,6 @@ onMounted(load)
             <p v-if="exercise.notes" class="item-card__notes">{{ exercise.notes }}</p>
           </div>
         </article>
-
-        <div
-          v-if="confirmingDeleteId === exercise.id"
-          class="swipe-confirm"
-          role="alertdialog"
-          aria-label="Confirm delete"
-        >
-          <span>Delete {{ exercise.name }}?</span>
-          <div class="swipe-confirm__actions">
-            <button
-              class="button button--secondary button--compact"
-              type="button"
-              @click="confirmingDeleteId = null"
-            >
-              Cancel
-            </button>
-            <button
-              class="button button--danger button--compact"
-              type="button"
-              @click="deleteExerciseItem(exercise)"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -503,6 +486,39 @@ onMounted(load)
             </button>
           </div>
         </form>
+      </section>
+    </div>
+
+    <div
+      v-if="exerciseToDelete"
+      class="modal-backdrop confirmation-backdrop"
+      @click.self="confirmingDeleteId = null"
+    >
+      <section
+        class="modal confirmation-dialog"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="delete-exercise-title"
+        aria-describedby="delete-exercise-description"
+      >
+        <div class="confirmation-dialog__icon confirmation-dialog__icon--danger" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13" />
+          </svg>
+        </div>
+        <h2 id="delete-exercise-title">Are you sure you want to delete this exercise?</h2>
+        <p id="delete-exercise-description">
+          <strong>{{ exerciseToDelete.name }}</strong> will be permanently removed. This cannot be
+          undone.
+        </p>
+        <div class="modal__actions confirmation-dialog__actions">
+          <button class="button button--secondary" type="button" @click="confirmingDeleteId = null">
+            Cancel
+          </button>
+          <button class="button button--danger" type="button" @click="confirmDeleteExercise">
+            Yes, delete
+          </button>
+        </div>
       </section>
     </div>
   </div>
