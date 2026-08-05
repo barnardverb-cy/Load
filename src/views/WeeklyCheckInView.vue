@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 
 import ToastNotification from '@/components/ToastNotification.vue'
 import { getWeeklyCheckIn, listWeeklyCheckIns, saveWeeklyCheckIn } from '@/services/health'
 import { useAuthStore } from '@/stores/auth'
+import { useRefresh } from '@/composables/useRefresh'
 import type { WeeklyCheckIn } from '@/types/health'
 import { isoWeekNumber, localDateString } from '@/utils/date'
 import { getErrorMessage } from '@/utils/errors'
@@ -13,6 +14,7 @@ import { weeklyCheckInSchema } from '@/validation/health'
 type NumberField = number | ''
 
 const auth = useAuthStore()
+const { setLoader } = useRefresh()
 const today = localDateString()
 const loading = ref(true)
 const saving = ref(false)
@@ -124,6 +126,10 @@ function editCheckIn(checkIn: WeeklyCheckIn) {
   globalThis.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
+async function load() {
+  await Promise.all([refreshHistory(), loadSelectedDate()])
+}
+
 watch(
   () => form.check_in_date,
   () => void loadSelectedDate(),
@@ -131,11 +137,14 @@ watch(
 
 onMounted(async () => {
   try {
-    await Promise.all([refreshHistory(), loadSelectedDate()])
+    await load()
+    setLoader(load)
   } catch (error) {
     showToast(getErrorMessage(error, 'Unable to load weekly check-ins.'), 'error')
   }
 })
+
+onBeforeUnmount(() => setLoader(null))
 </script>
 
 <template>
@@ -148,7 +157,7 @@ onMounted(async () => {
         <h1>Check in</h1>
         <p>Track body changes consistently without cluttering your daily log.</p>
       </div>
-      <RouterLink class="button button--secondary" to="/dashboard">Dashboard</RouterLink>
+      <RouterLink class="button button--secondary" to="/dashboard">Go back to Dashboard</RouterLink>
     </header>
 
     <section class="panel health-entry-card">

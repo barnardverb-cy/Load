@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 
 import ToastNotification from '@/components/ToastNotification.vue'
 import { getDailyLog, saveDailyLog } from '@/services/health'
 import { listWorkoutHistory } from '@/services/workouts'
 import { useAuthStore } from '@/stores/auth'
+import { useRefresh } from '@/composables/useRefresh'
 import type { DailyLog } from '@/types/health'
 import type { WorkoutSessionBundle } from '@/types/workout'
 import { localDateString } from '@/utils/date'
@@ -14,6 +15,7 @@ import { dailyLogSchema } from '@/validation/health'
 type NumberField = number | ''
 
 const auth = useAuthStore()
+const { setLoader } = useRefresh()
 const today = localDateString()
 const loading = ref(true)
 const saving = ref(false)
@@ -106,7 +108,10 @@ onMounted(async () => {
     workouts.value = []
   }
   await loadSelectedDate()
+  setLoader(loadSelectedDate)
 })
+
+onBeforeUnmount(() => setLoader(null))
 </script>
 
 <template>
@@ -119,12 +124,12 @@ onMounted(async () => {
         <h1>Log your day</h1>
         <p>Record nutrition, hydration, movement, and recovery in one place.</p>
       </div>
-      <RouterLink class="button button--secondary" to="/dashboard">Dashboard</RouterLink>
+      <RouterLink class="button button--secondary" to="/dashboard">Go back to Dashboard</RouterLink>
     </header>
 
     <section class="panel health-entry-card">
       <form class="form" @submit.prevent="save">
-        <div class="field">
+        <div class="field daily-date-field">
           <label for="daily-date">Date</label>
           <input id="daily-date" v-model="form.log_date" type="date" :max="today" />
         </div>
