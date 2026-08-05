@@ -54,6 +54,14 @@ export async function setExerciseArchived(id: string, isArchived: boolean): Prom
 }
 
 export async function deleteExercise(id: string): Promise<void> {
+  // Remove rows that reference this exercise before deleting it, otherwise the
+  // template_exercises foreign key constraint blocks the delete (409 / 23503).
+  const { error: linkError } = await supabase
+    .from('template_exercises')
+    .delete()
+    .eq('exercise_id', id)
+  if (linkError) throw linkError
+
   const { error } = await supabase.from('exercises').delete().eq('id', id)
   if (error) throw error
 }
