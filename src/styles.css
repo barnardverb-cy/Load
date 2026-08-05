@@ -4102,3 +4102,169 @@ h2 {
   border-radius: 50%;
   background: currentColor;
 }
+
+/* App content top bar (home-screen refresh control) */
+.app-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1.5rem;
+  background: color-mix(in srgb, var(--paper) 86%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+}
+
+.app-topbar__spacer {
+  flex: 1;
+}
+
+.refresh-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.7rem;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.refresh-button:hover:not(:disabled) {
+  border-color: var(--forest);
+  box-shadow: 0 6px 16px rgb(24 32 28 / 8%);
+}
+
+.refresh-button:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.refresh-button:focus-visible {
+  outline: 3px solid rgb(171 200 46 / 40%);
+  outline-offset: 1px;
+}
+
+.refresh-button__icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.refresh-button__icon.is-spinning {
+  animation: refresh-spin 800ms linear infinite;
+}
+
+@keyframes refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Skeletons */
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+  background: #e7e9e2;
+}
+
+.skeleton-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 65%), transparent);
+  animation: skeleton-sweep 1.3s ease-in-out infinite;
+}
+
+@keyframes skeleton-sweep {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton-line {
+  display: block;
+  height: 0.8rem;
+  border-radius: 0.4rem;
+  background: #e7e9e2;
+}
+
+.skeleton-line--block {
+  width: 100%;
+}
+
+.skeleton-line--title {
+  height: 1.15rem;
+  margin-bottom: 0.35rem;
+}
+
+.skeleton-line--short {
+  width: 55%;
+}
+
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.4rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--paper);
+}
+
+.skeleton-card__media {
+  height: 6rem;
+  border-radius: 0.7rem;
+}
+
+.skeleton-card__body {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.history-card--skeleton {
+  pointer-events: none;
+}
+
+.dashboard-skeleton {
+  display: grid;
+  gap: 1.1rem;
+  width: min(100% - 3rem, 74rem);
+  margin: 0 auto;
+  padding-top: 2.5rem;
+}
+
+.dashboard-skeleton__row {
+  display: grid;
+  gap: 1.1rem;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.dashboard-skeleton .metric-card {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1.4rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--paper);
+}
+
+@media (max-width: 820px) {
+  .dashboard-skeleton__row {
+    grid-template-columns: 1fr;
+  }
+}

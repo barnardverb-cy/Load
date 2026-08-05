@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import DropdownSelect from '@/components/DropdownSelect.vue'
+import SkeletonCard from '@/components/SkeletonCard.vue'
 import {
   createTemplate,
   deleteTemplate,
@@ -12,6 +13,7 @@ import {
 } from '@/services/templates'
 import { getActiveWorkout, startWorkout } from '@/services/workouts'
 import { useAuthStore } from '@/stores/auth'
+import { useRefresh } from '@/composables/useRefresh'
 import type { TemplateSummary } from '@/types/training'
 import type { WorkoutSession } from '@/types/workout'
 import { getErrorMessage } from '@/utils/errors'
@@ -19,6 +21,7 @@ import { workoutTemplateSchema } from '@/validation/training'
 
 const auth = useAuthStore()
 const router = useRouter()
+const { refreshing, setLoader, clearLoader } = useRefresh()
 const templates = ref<TemplateSummary[]>([])
 const loading = ref(true)
 const saving = ref(false)
@@ -270,7 +273,12 @@ function cancelSearch() {
   searchInput.value?.blur()
 }
 
-onMounted(load)
+onMounted(() => {
+  setLoader(load)
+  void load()
+})
+
+onBeforeUnmount(() => clearLoader())
 </script>
 
 <template>
@@ -342,7 +350,9 @@ onMounted(load)
 
     <p v-if="errorMessage" class="alert alert--error" role="alert">{{ errorMessage }}</p>
 
-    <div v-if="loading" class="empty-state">Loading your programs…</div>
+    <div v-if="loading || refreshing" class="template-list" aria-busy="true">
+      <SkeletonCard v-for="n in 4" :key="n" height="6rem" />
+    </div>
     <div v-else-if="filteredPrograms.length === 0" class="empty-state">
       <span class="empty-state__icon">☷</span>
       <h2>

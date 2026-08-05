@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 
+import SkeletonLine from '@/components/SkeletonLine.vue'
 import { listWorkoutHistory } from '@/services/workouts'
+import { useRefresh } from '@/composables/useRefresh'
 import type { WorkoutSessionBundle } from '@/types/workout'
 import { getErrorMessage } from '@/utils/errors'
 import { formatDuration, workoutDurationSeconds, workoutVolume } from '@/utils/workout'
 
+const { refreshing, setLoader, clearLoader } = useRefresh()
 const workouts = ref<WorkoutSessionBundle[]>([])
 const loading = ref(true)
 const errorMessage = ref('')
@@ -26,7 +29,7 @@ function completedSetCount(workout: WorkoutSessionBundle) {
     .filter((set) => set.status === 'completed').length
 }
 
-onMounted(async () => {
+async function load() {
   try {
     workouts.value = await listWorkoutHistory()
   } catch (error) {
@@ -34,7 +37,14 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+}
+
+onMounted(() => {
+  setLoader(load)
+  void load()
 })
+
+onBeforeUnmount(() => clearLoader())
 </script>
 
 <template>
@@ -45,7 +55,17 @@ onMounted(async () => {
       <p>Review logged sets and the progression calculated from each session.</p>
     </header>
 
-    <div v-if="loading" class="empty-state">Loading workout history…</div>
+    <div v-if="loading || refreshing" class="history-list" aria-busy="true">
+      <div v-for="n in 4" :key="n" class="history-card history-card--skeleton">
+        <div class="history-card__heading">
+          <div>
+            <SkeletonLine variant="title" width="45%" />
+            <SkeletonLine width="30%" />
+          </div>
+        </div>
+        <SkeletonLine width="60%" />
+      </div>
+    </div>
     <p v-else-if="errorMessage" class="alert alert--error" role="alert">{{ errorMessage }}</p>
     <div v-else-if="workouts.length === 0" class="empty-state">
       <span class="empty-state__icon">◷</span>

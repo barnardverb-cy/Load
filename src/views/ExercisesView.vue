@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 
 import DropdownSelect from '@/components/DropdownSelect.vue'
+import SkeletonCard from '@/components/SkeletonCard.vue'
 import {
   createExercise,
   deleteExercise,
@@ -10,6 +11,7 @@ import {
   updateExercise,
 } from '@/services/exercises'
 import { useAuthStore } from '@/stores/auth'
+import { useRefresh } from '@/composables/useRefresh'
 import type { Exercise } from '@/types/training'
 import { getErrorMessage } from '@/utils/errors'
 import {
@@ -20,6 +22,7 @@ import {
 } from '@/validation/training'
 
 const auth = useAuthStore()
+const { refreshing, setLoader, clearLoader } = useRefresh()
 const exercises = ref<Exercise[]>([])
 const loading = ref(true)
 const saving = ref(false)
@@ -258,7 +261,12 @@ function setEquipment(value: string) {
   delete formErrors.value.equipment
 }
 
-onMounted(load)
+onMounted(() => {
+  setLoader(load)
+  void load()
+})
+
+onBeforeUnmount(() => clearLoader())
 </script>
 
 <template>
@@ -319,7 +327,9 @@ onMounted(load)
 
     <p v-if="errorMessage" class="alert alert--error" role="alert">{{ errorMessage }}</p>
 
-    <div v-if="loading" class="empty-state">Loading your exercises…</div>
+    <div v-if="loading || refreshing" class="item-grid" aria-busy="true">
+      <SkeletonCard v-for="n in 6" :key="n" />
+    </div>
     <div v-else-if="filteredExercises.length === 0" class="empty-state">
       <span class="empty-state__icon">◇</span>
       <h2>

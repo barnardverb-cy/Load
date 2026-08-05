@@ -4,6 +4,10 @@ import { useRouter } from 'vue-router'
 
 import BrandMark from '@/components/BrandMark.vue'
 import { useAuthStore } from '@/stores/auth'
+import { provideRefresh, useRefresh } from '@/composables/useRefresh'
+
+provideRefresh()
+const { refreshing, refresh } = useRefresh()
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -72,6 +76,30 @@ async function signOut() {
     </aside>
 
     <main class="app-content">
+      <div class="app-topbar">
+        <span class="app-topbar__spacer" aria-hidden="true"></span>
+        <button
+          class="refresh-button"
+          type="button"
+          :disabled="refreshing"
+          :aria-busy="refreshing"
+          aria-label="Refresh data"
+          title="Refresh"
+          @click="refresh"
+        >
+          <svg
+            class="refresh-button__icon"
+            :class="{ 'is-spinning': refreshing }"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+            <path d="M21 4v5h-5" />
+          </svg>
+          <span>{{ refreshing ? 'Refreshing…' : 'Refresh' }}</span>
+        </button>
+      </div>
+
       <RouterView />
     </main>
   </div>

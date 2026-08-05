@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import AdherenceChart from '@/components/AdherenceChart.vue'
+import SkeletonLine from '@/components/SkeletonLine.vue'
 import StrengthImprovements from '@/components/StrengthImprovements.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 import WeightTrendChart from '@/components/WeightTrendChart.vue'
 import { getDailyLog, getFitnessGoals, listDailyLogs, listWeeklyCheckIns } from '@/services/health'
 import { getActiveWorkout, listWorkoutHistory } from '@/services/workouts'
 import { useAuthStore } from '@/stores/auth'
+import { useRefresh } from '@/composables/useRefresh'
 import type { DailyLog, FitnessGoals, WeeklyCheckIn } from '@/types/health'
 import type { WorkoutSession, WorkoutSessionBundle } from '@/types/workout'
 import { localDateString } from '@/utils/date'
@@ -18,6 +20,7 @@ import { kilogramsToDisplay } from '@/utils/units'
 import { formatDuration, workoutDurationSeconds, workoutVolume } from '@/utils/workout'
 
 const auth = useAuthStore()
+const { refreshing, setLoader, clearLoader } = useRefresh()
 const loading = ref(true)
 const goals = ref<FitnessGoals | null>(null)
 const todayLog = ref<DailyLog | null>(null)
@@ -135,7 +138,7 @@ async function loadActiveWorkout() {
   }
 }
 
-onMounted(async () => {
+async function load() {
   try {
     const [savedGoals, log, logs, savedCheckIns, history] = await Promise.all([
       getFitnessGoals(),
@@ -155,7 +158,14 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+}
+
+onMounted(() => {
+  setLoader(load)
+  void load()
 })
+
+onBeforeUnmount(() => clearLoader())
 </script>
 
 <template>
@@ -174,7 +184,30 @@ onMounted(async () => {
       </div>
     </header>
 
-    <div v-if="loading" class="empty-state">Loading your dashboard…</div>
+    <div v-if="loading || refreshing" class="dashboard-skeleton" aria-busy="true">
+      <div class="dashboard-skeleton__row">
+        <div class="metric-card">
+          <SkeletonLine variant="title" width="50%" />
+          <SkeletonLine width="70%" />
+          <SkeletonLine width="40%" />
+        </div>
+        <div class="metric-card">
+          <SkeletonLine variant="title" width="50%" />
+          <SkeletonLine width="70%" />
+          <SkeletonLine width="40%" />
+        </div>
+        <div class="metric-card">
+          <SkeletonLine variant="title" width="50%" />
+          <SkeletonLine width="70%" />
+          <SkeletonLine width="40%" />
+        </div>
+      </div>
+      <div class="metric-card metric-card--wide">
+        <SkeletonLine variant="title" width="35%" />
+        <SkeletonLine width="90%" />
+        <SkeletonLine width="80%" />
+      </div>
+    </div>
     <template v-else>
       <RouterLink v-if="activeWorkout" class="resume-banner" :to="`/workouts/${activeWorkout.id}`">
         <span class="resume-banner__pulse" aria-hidden="true"></span>
