@@ -156,12 +156,12 @@ onMounted(async () => {
 
         <fieldset class="field">
           <legend>Preferred weight unit</legend>
-          <div class="segmented-control">
-            <label>
+          <div class="segmented-control" role="radiogroup" aria-label="Preferred weight unit">
+            <label class="segmented-control__option">
               <input v-model="form.preferredWeightUnit" type="radio" value="kg" />
               <span>Kilograms</span>
             </label>
-            <label>
+            <label class="segmented-control__option">
               <input v-model="form.preferredWeightUnit" type="radio" value="lb" />
               <span>Pounds</span>
             </label>
